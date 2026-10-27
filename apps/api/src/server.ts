@@ -3,6 +3,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { AgentStatus } from '@nyx_meta/core';
 import { createSystem, type NyxSystem } from './system.js';
+import { ATTACKS, isAttackKind, runAttack } from './attacks.js';
+
+export { createSystem, type NyxSystem } from './system.js';
+export { ATTACKS, runAttack, type AttackKind, type AttackResult } from './attacks.js';
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null;
@@ -11,11 +15,48 @@ function fail(res: Response, status: number, message: string): void {
   res.status(status).json({ error: message });
 }
 
+export interface BuildAppOptions {
+  /** How many task or attack runs one client may start per minute. */
+  runLimitPerMinute?: number;
+}
+
+const RUN_WINDOW_MS = 60_000;
+
+/**
+ * A small in memory rate limit for the run endpoints. Running a task is the
+ * one expensive thing a visitor can ask this server to do, so it gets a
+ * simple, honest ceiling: past the limit the answer is a clear 429, never a
+ * silent failure.
+ */
+function makeRunLimiter(limitPerMinute: number) {
+  const hits = new Map<string, number[]>();
+  return (req: Request, res: Response, next: () => void): void => {
+    const now = Date.now();
+    const key = req.ip ?? 'unknown';
+    const recent = (hits.get(key) ?? []).filter((t) => now - t < RUN_WINDOW_MS);
+    if (recent.length >= limitPerMinute) {
+      fail(res, 429, 'Too many runs in a short time. Wait a moment, then try again.');
+      return;
+    }
+    recent.push(now);
+    hits.set(key, recent);
+    next();
+  };
+}
+
 /** Builds the owner API on top of a wired Nyx system. */
-export function buildApp(system: NyxSystem): express.Express {
+export function buildApp(system: NyxSystem, opts: BuildAppOptions = {}): express.Express {
   const { engine } = system;
   const app = express();
+  const runLimiter = makeRunLimiter(opts.runLimitPerMinute ?? 30);
   app.use(express.json());
+  app.use((err: unknown, _req: Request, res: Response, next: (err?: unknown) => void) => {
+    const type = (err as { type?: string } | null)?.type;
+    if (err instanceof SyntaxError || type === 'entity.parse.failed') {
+      return fail(res, 400, 'The request body must be valid JSON.');
+    }
+    return next(err);
+  });
 
   app.get('/api/overview', (_req: Request, res: Response) => {
     const agents = engine.listAgents();
@@ -163,13 +204,34 @@ export function buildApp(system: NyxSystem): express.Express {
     }
   });
 
-  app.post('/api/tasks/run', async (req: Request, res: Response) => {
+  app.post('/api/tasks/run', runLimiter, async (req: Request, res: Response) => {
     const body: unknown = req.body;
     if (!isRecord(body) || typeof body.task !== 'string' || body.task.length === 0) {
       return fail(res, 400, 'a task text is required');
     }
-    const result = await system.runner.runTask(body.task);
-    return res.json(result);
+    try {
+      const result = await system.runner.runTask(body.task);
+      return res.json(result);
+    } catch (err) {
+      return fail(res, 500, err instanceof Error ? err.message : String(err));
+    }
+  });
+
+  app.get('/api/attacks', (_req: Request, res: Response) => {
+    res.json(ATTACKS);
+  });
+
+  app.post('/api/attacks/:kind/run', runLimiter, async (req: Request, res: Response) => {
+    const kind = req.params.kind;
+    if (!isAttackKind(kind)) {
+      return fail(res, 404, `unknown attack: ${kind}`);
+    }
+    try {
+      const result = await runAttack(system, kind);
+      return res.json(result);
+    } catch (err) {
+      return fail(res, 500, err instanceof Error ? err.message : String(err));
+    }
   });
 
   app.get('/api/audit', (_req: Request, res: Response) => {
@@ -181,6 +243,10 @@ export function buildApp(system: NyxSystem): express.Express {
       receipts: engine.receipts.list(),
       approvals: engine.approvals.list(),
     });
+  });
+
+  app.use('/api', (_req: Request, res: Response) => {
+    return fail(res, 404, 'That endpoint does not exist.');
   });
 
   const here = path.dirname(fileURLToPath(import.meta.url));

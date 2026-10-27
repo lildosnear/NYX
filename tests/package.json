@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@nyx_meta/agent": "0.1.0",
+    "@nyx_meta/api": "0.1.0",
     "@nyx_meta/core": "0.1.0",
     "@nyx_meta/merchants": "0.1.0"
   },

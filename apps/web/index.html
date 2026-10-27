@@ -21,6 +21,7 @@
     <button data-view="policies" class="navbtn">Policies</button>
     <button data-view="payments" class="navbtn">Payments</button>
     <button data-view="approvals" class="navbtn">Approvals <span id="approvalBadge" class="badge hidden">0</span></button>
+    <button data-view="attacks" class="navbtn">Attack Lab</button>
   </nav>
 </header>
 <main>
@@ -79,6 +80,14 @@
     <div class="panel">
       <h2>Blocked attempts</h2>
       <div id="blockedList"></div>
+    </div>
+  </section>
+
+  <section id="view-attacks" class="view hidden">
+    <div class="panel">
+      <h2>Attack lab</h2>
+      <p class="muted">Do not take our word for it. Fire each attack at the live system and watch what Nyx does. Every attempt below is real: real signed quotes, the real policy engine, and no money ever moves for an attack.</p>
+      <div id="attackList"></div>
     </div>
   </section>
 

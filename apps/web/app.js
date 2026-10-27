@@ -87,6 +87,7 @@ async function loadAgents() {
 
 async function loadPolicies() {
   const policies = await api('/api/policies');
+  if (!policies.length) { $('policyList').innerHTML = '<p class="empty">No policies yet. Register an agent first, and its policy will appear here.</p>'; return; }
   const vendors = ['vendor_data_api', 'vendor_research_api', 'vendor_design_tool', 'vendor_shadow_leads'];
   $('policyList').innerHTML = policies.map((p) =>
     '<div class="risk" style="margin-bottom:12px"><strong>' + p.agentId + '</strong> (version ' + p.version + ')<br>' +
@@ -159,6 +160,52 @@ async function loadApprovals() {
   });
 }
 
+function decisionLabel(outcome) {
+  if (outcome === 'settled') return '<span class="ok">settled</span>';
+  if (outcome === 'approval_required') return '<span class="warn">held for the owner</span>';
+  if (outcome === 'execution_failed') return '<span class="warn">execution failed</span>';
+  return '<span class="bad">blocked</span>';
+}
+
+async function loadAttacks() {
+  const attacks = await api('/api/attacks');
+  $('attackList').innerHTML = attacks.map((a) =>
+    '<div class="risk" style="margin-bottom:12px">' +
+    '<strong>' + a.title + '</strong><br>' +
+    '<span>' + a.story + '</span><br>' +
+    '<span class="muted">What should happen: ' + a.expected + '</span><br>' +
+    '<button data-run="' + a.kind + '">Run this attack</button> ' +
+    '<span class="muted" id="attack-status-' + a.kind + '"></span>' +
+    '<div id="attack-result-' + a.kind + '" style="margin-top:8px"></div>' +
+    '</div>'
+  ).join('');
+  $('attackList').querySelectorAll('button[data-run]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const kind = btn.dataset.run;
+      btn.disabled = true;
+      $('attack-status-' + kind).textContent = 'Running...';
+      try {
+        const result = await api('/api/attacks/' + kind + '/run', { method: 'POST' });
+        let html = '';
+        if (result.setupDecision) {
+          html += '<p style="margin:4px 0">First, the honest step: ' + decisionLabel(result.setupDecision.outcome) +
+            ' <span class="muted">(' + result.setupDecision.code + ': ' + result.setupDecision.reason + ')</span></p>';
+        }
+        html += '<p style="margin:4px 0">The attack itself: ' + decisionLabel(result.decision.outcome) +
+          ' <span class="muted">(' + result.decision.code + ': ' + result.decision.reason + ')</span></p>' +
+          '<p style="margin:4px 0"><strong>' + result.landedText + '</strong></p>';
+        $('attack-result-' + kind).innerHTML = html;
+        $('attack-status-' + kind).textContent = '';
+        await refresh();
+      } catch (err) {
+        $('attack-status-' + kind).textContent = err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
 async function refresh() {
   await Promise.all([loadOverview(), loadAgents(), loadPolicies(), loadPayments(), loadApprovals()]);
 }
@@ -217,3 +264,4 @@ $('agentForm').addEventListener('submit', async (e) => {
 });
 
 refresh().catch((err) => console.error(err));
+loadAttacks().catch((err) => console.error(err));

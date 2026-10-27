@@ -22,13 +22,36 @@ The agent in this project plans purchases and explains risk. That work is done b
 
 The payment decision never comes from a model. It comes from the policy engine, which follows fixed rules in code. A language model can be persuaded or tricked by text it reads. The demo proves why that separation matters. In the last scene, a vendor response tries to talk the agent into buying an expensive list from a vendor the owner never approved. The agent tries it. Nyx holds the payment and no money moves.
 
+## How it fits together
+
+The owner works in the dashboard. The dashboard talks to the owner api. The api runs the agent, and the agent asks merchants for signed quotes. Every payment then goes to one place, the policy engine, and only the engine can say settle, hold, or block. The engine settles through the payment provider, holds owner rule breaks in the approvals queue, and records every attempt as a receipt the owner can audit.
+
+```
+  Owner
+    │ sets rules, reads receipts, approves or denies
+    ▼
+  Dashboard ──► Owner API ──► Agent runner ──► Merchants
+                  │              plans with        issue signed
+                  │              a model           quotes
+                  ▼
+             Policy engine ◄── signed quote and payment request
+                  │
+       ┌──────────┼────────────┐
+       ▼          ▼            ▼
+    settles    holds in     blocks and
+    through    approvals    records a
+    provider   queue        receipt
+```
+
+Nothing reaches the provider except through the engine. That single path is the whole security claim. There is no second door for money to leave by.
+
 ## What is in this repo
 
 1. The core package holds the types, the signed quote system, the budget ledger, the policy engine, the approvals store, the receipt store, and the payment provider interface with a sandbox provider that simulates test mode charges.
 2. The merchants package holds four mock vendors that issue signed quotes. Three are on the owner approved list. One is not, and it exists for the blocked scenes.
 3. The agent package holds the model adapter interface, the Meta adapter, the mock adapter, the agent runner, and the injection scenario.
-4. The api app serves the owner endpoints and the dashboard.
-5. The web app is the owner dashboard. It has five views. Overview, Agents, Policies, Payments with blocked attempts, and Approvals.
+4. The api app serves the owner endpoints, the attack lab endpoints and the dashboard. It also rate limits task and attack runs, so the expensive endpoints cannot be hammered.
+5. The web app is the owner dashboard. It has six views. Overview, Agents, Policies, Payments with blocked attempts, Approvals, and the Attack Lab, where the owner can fire live attacks at the system and watch where each one lands.
 6. The tests folder holds the automated tests. They cover the cap, the daily budget, quote expiry, replay, callers who are not authorized, pause, revoke, approving and denying, ten payments racing one budget, a forced provider failure, and the injection scenario.
 7. The scripts folder holds the demo entry that runs the five scenes in order and prints a pass or fail line for each check.
 
@@ -41,6 +64,7 @@ You need Node 20 or newer.
 3. Run npm test to run the full test suite.
 4. Run npm run demo to watch the five scenes.
 5. Run npm run api and open the dashboard in your browser at the address it prints, on port 8390 by default.
+6. Open the Attack Lab view in the dashboard and run the attacks. Each one fires at the live system and shows where it landed.
 
 The demo scenes are the product story in order. A payment inside the rules settles. An over cap payment is held. The owner approves that one payment and it settles. A paused agent is blocked, and a revoked agent is blocked. An injection attempt is held and no money moves. After the scenes, the demo also checks a replayed quote, an expired quote and a caller the owner never authorized.
 
