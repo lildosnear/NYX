@@ -1,0 +1,12 @@
+{
+  "name": "@nyx_meta/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nyx core: policy engine, budget ledger, signed quotes, approvals, receipts, sandbox payment provider.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "type": "module"
+}

@@ -1,0 +1,18 @@
+{
+  "name": "@nyx_meta/tests",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nyx test suites: policy rules, approvals, concurrency, provider failure, injection.",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nyx_meta/agent": "0.1.0",
+    "@nyx_meta/core": "0.1.0",
+    "@nyx_meta/merchants": "0.1.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  },
+  "type": "module"
+}

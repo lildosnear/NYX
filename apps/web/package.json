@@ -1,0 +1,6 @@
+{
+  "name": "@nyx_meta/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nyx owner dashboard. Plain HTML, CSS and JS, served by the API app. No build step."
+}

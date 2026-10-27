@@ -1,0 +1,16 @@
+{
+  "name": "@nyx_meta/agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nyx agent runner with a model adapter seam. Runs on Muse Spark through the Meta Model API when MODEL_API_KEY is set, with a deterministic mock adapter as fallback.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "dependencies": {
+    "@nyx_meta/core": "0.1.0",
+    "@nyx_meta/merchants": "0.1.0"
+  },
+  "type": "module"
+}

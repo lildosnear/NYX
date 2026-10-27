@@ -1,0 +1,35 @@
+* { box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; margin: 0; background: #f6f4ef; color: #1c1a17; }
+header { background: #14120f; color: #f6f4ef; padding: 18px 28px; display: flex; flex-wrap: wrap; gap: 18px; align-items: center; justify-content: space-between; }
+.brand { display: flex; gap: 14px; align-items: center; }
+.disc { width: 42px; height: 42px; border-radius: 50%; background: #ec641d; }
+.brand h1 { margin: 0; font-size: 26px; letter-spacing: 2px; }
+.brand p { margin: 2px 0 0; color: #c9c2b4; font-size: 13px; }
+nav { display: flex; gap: 8px; flex-wrap: wrap; }
+.navbtn { background: transparent; color: #f6f4ef; border: 1px solid #4a443a; padding: 8px 14px; border-radius: 999px; cursor: pointer; font-size: 14px; }
+.navbtn.active { background: #ec641d; border-color: #ec641d; color: #14120f; font-weight: 600; }
+.badge { background: #fff; color: #b23c05; border-radius: 999px; padding: 0 7px; font-weight: 700; }
+main { max-width: 1050px; margin: 0 auto; padding: 24px 18px 60px; }
+.view.hidden, .hidden { display: none; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.card { background: #fff; border: 1px solid #e3ddd0; border-radius: 12px; padding: 16px; }
+.card .num { font-size: 26px; font-weight: 700; }
+.card .lbl { color: #6d675c; font-size: 13px; margin-top: 4px; }
+.panel { background: #fff; border: 1px solid #e3ddd0; border-radius: 12px; padding: 18px; margin-bottom: 18px; }
+.panel h2 { margin-top: 0; font-size: 18px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #eee7da; vertical-align: top; }
+th { color: #6d675c; font-weight: 600; }
+.muted { color: #6d675c; }
+.ok { color: #177245; font-weight: 600; }
+.bad { color: #b23c05; font-weight: 600; }
+.warn { color: #9a6b00; font-weight: 600; }
+button { background: #14120f; color: #fff; border: 0; padding: 7px 13px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+button.secondary { background: #e9e2d4; color: #14120f; }
+button.danger { background: #b23c05; }
+button:disabled { opacity: 0.5; cursor: default; }
+input, select { padding: 7px 9px; border: 1px solid #cfc7b6; border-radius: 8px; font-size: 14px; }
+form label { display: block; margin: 10px 0; font-size: 14px; }
+form label input { display: block; margin-top: 4px; width: 320px; max-width: 100%; }
+.risk { background: #fdf3e3; border: 1px solid #ecd9ae; border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+.empty { color: #6d675c; font-style: italic; }

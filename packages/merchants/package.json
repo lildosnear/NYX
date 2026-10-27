@@ -1,0 +1,15 @@
+{
+  "name": "@nyx_meta/merchants",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nyx mock vendors that issue signed, expiring price quotes.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "dependencies": {
+    "@nyx_meta/core": "0.1.0"
+  },
+  "type": "module"
+}

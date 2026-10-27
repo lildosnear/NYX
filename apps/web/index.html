@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nyx Owner Dashboard</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="disc"></div>
+    <div>
+      <h1>Nyx</h1>
+      <p>The firewall between AI agents and your money.</p>
+    </div>
+  </div>
+  <nav>
+    <button data-view="overview" class="navbtn active">Overview</button>
+    <button data-view="agents" class="navbtn">Agents</button>
+    <button data-view="policies" class="navbtn">Policies</button>
+    <button data-view="payments" class="navbtn">Payments</button>
+    <button data-view="approvals" class="navbtn">Approvals <span id="approvalBadge" class="badge hidden">0</span></button>
+  </nav>
+</header>
+<main>
+  <section id="view-overview" class="view">
+    <div class="cards" id="overviewCards"></div>
+    <div class="panel">
+      <h2>Run an agent task</h2>
+      <p class="muted">Try: research the market and write a brief. Every purchase the agent makes goes through Nyx first.</p>
+      <form id="taskForm">
+        <input id="taskInput" type="text" value="research the market and write a brief" size="52">
+        <button type="submit">Run task</button>
+      </form>
+      <div id="taskResult"></div>
+    </div>
+    <div class="panel">
+      <h2>Vendors</h2>
+      <div id="vendorList"></div>
+    </div>
+    <div class="panel">
+      <h2>Recent payments</h2>
+      <div id="recentPayments"></div>
+    </div>
+  </section>
+
+  <section id="view-agents" class="view hidden">
+    <div class="panel">
+      <h2>Agents</h2>
+      <div id="agentList"></div>
+    </div>
+    <div class="panel">
+      <h2>Register an agent</h2>
+      <form id="agentForm">
+        <label>Agent id <input id="agentId" required placeholder="agent_support"></label>
+        <label>Name <input id="agentName" required placeholder="Support Agent"></label>
+        <label>Authorized callers (comma separated) <input id="agentCallers" value="runner"></label>
+        <button type="submit">Register</button>
+      </form>
+      <p class="muted" id="agentFormMsg"></p>
+    </div>
+  </section>
+
+  <section id="view-policies" class="view hidden">
+    <div class="panel">
+      <h2>Spending policies</h2>
+      <p class="muted">Amounts are in cents. A cap of 500 means five dollars per payment. The daily budget is never waived, not even by an approval.</p>
+      <div id="policyList"></div>
+    </div>
+  </section>
+
+  <section id="view-payments" class="view hidden">
+    <div class="panel">
+      <h2>Payments and receipts</h2>
+      <p><a href="/api/audit">Download the full audit export (JSON)</a></p>
+      <div id="paymentList"></div>
+    </div>
+    <div class="panel">
+      <h2>Blocked attempts</h2>
+      <div id="blockedList"></div>
+    </div>
+  </section>
+
+  <section id="view-approvals" class="view hidden">
+    <div class="panel">
+      <h2>Approvals queue</h2>
+      <p class="muted">Payments outside the rules wait here. No money moves until you decide.</p>
+      <div id="approvalList"></div>
+    </div>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

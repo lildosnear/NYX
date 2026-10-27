@@ -1,0 +1,24 @@
+{
+  "name": "@nyx_meta/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nyx owner API: serves the dashboard and the owner endpoints.",
+  "main": "./dist/server.js",
+  "types": "./dist/server.d.ts",
+  "exports": {
+    ".": "./dist/server.js"
+  },
+  "scripts": {
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@nyx_meta/agent": "0.1.0",
+    "@nyx_meta/core": "0.1.0",
+    "@nyx_meta/merchants": "0.1.0",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21"
+  },
+  "type": "module"
+}

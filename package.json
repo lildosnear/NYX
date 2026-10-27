@@ -1,0 +1,21 @@
+{
+  "name": "nyx_meta",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nyx: a security and payment control layer for AI agents. Built for the Meta Global AI Developer Hackathon.",
+  "engines": { "node": ">=20" },
+  "workspaces": ["packages/*", "apps/*", "tests"],
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf packages/*/dist apps/*/dist tests/dist scripts/dist",
+    "test": "npm run build && npm run test --workspace @nyx_meta/tests",
+    "demo": "npm run build && node scripts/dist/demo.js",
+    "benchmark": "npm run build && node scripts/dist/benchmark_models.js",
+    "api": "npm run build && npm run start --workspace @nyx_meta/api",
+    "typecheck": "tsc -b"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.9.3"
+  }
+}
