@@ -41,10 +41,10 @@ async function main(): Promise<void> {
   const model = new MockModelAdapter();
   const runner = new AgentRunner(engine, merchantSet.merchants, model, AGENT_ID, CALLER_ID);
 
-  const submit = (quote: Quote, callerId: string = CALLER_ID) => {
+  const submit = (quote: Quote, callerId: string = CALLER_ID, agentId: string = AGENT_ID) => {
     const request: PaymentRequest = {
       requestId: `req_${randomUUID()}`,
-      agentId: AGENT_ID,
+      agentId,
       callerId,
       quote,
       idempotencyKey: `idem_${randomUUID()}`,
@@ -92,12 +92,12 @@ async function main(): Promise<void> {
   );
 
   // Scene 4: a paused agent is blocked, and a revoked agent is blocked.
+  // Revoking is final, so this agent takes no further part in the demo.
   engine.setAgentStatus(AGENT_ID, 'paused');
   const pausedAttempt = await submit(quoteFor('vendor_data_api', 'weather_feed'));
   engine.setAgentStatus(AGENT_ID, 'active');
   engine.setAgentStatus(AGENT_ID, 'revoked');
   const revokedAttempt = await submit(quoteFor('vendor_data_api', 'weather_feed'));
-  engine.setAgentStatus(AGENT_ID, 'active');
   check(
     'Scene 4, paused and revoked agents blocked',
     pausedAttempt.outcome === 'blocked' &&
@@ -107,14 +107,27 @@ async function main(): Promise<void> {
     'while paused, and again after revoke, the agent could not pay for anything.',
   );
 
+  // A second agent carries the remaining scenes, with its own budget.
+  const SECOND_AGENT_ID = 'agent_field';
+  engine.registerAgent(
+    { id: SECOND_AGENT_ID, name: 'Field Agent', status: 'active', authorizedCallers: [CALLER_ID] },
+    {
+      agentId: SECOND_AGENT_ID,
+      perPaymentCapCents: 500,
+      dailyBudgetCents: 5000,
+      approvedVendors: [...merchantSet.approvedVendorIds],
+      version: 1,
+    },
+  );
+
   // Scene 5: a prompt injection pushes the agent to an unapproved vendor,
   // over the cap. The money still does not move.
-  const spentBefore = engine.spentToday(AGENT_ID);
+  const spentBefore = engine.spentToday(SECOND_AGENT_ID);
   const injection = await attemptInjectedPurchase({
     engine,
     merchants: merchantSet.merchants,
     unapprovedVendorId: merchantSet.unapprovedVendorId,
-    agentId: AGENT_ID,
+    agentId: SECOND_AGENT_ID,
     callerId: CALLER_ID,
   });
   const injectionApproval =
@@ -122,7 +135,7 @@ async function main(): Promise<void> {
   check(
     'Scene 5, injection attempt blocked',
     injection.outcome !== 'settled' &&
-      engine.spentToday(AGENT_ID) === spentBefore &&
+      engine.spentToday(SECOND_AGENT_ID) === spentBefore &&
       injectionApproval !== undefined &&
       injectionApproval.status === 'pending',
     `a vendor response told the agent to buy from ${merchantSet.unapprovedVendorId} for ${formatUsd(750)}. The payment never settled and is flagged for the owner: ${injectionApproval?.riskExplanation ?? ''}`,
@@ -130,8 +143,8 @@ async function main(): Promise<void> {
 
   // Extra checks: replay, expiry, unauthorized caller.
   const replayQuote = quoteFor('vendor_data_api', 'market_dataset');
-  const firstTry = await submit(replayQuote);
-  const secondTry = await submit(replayQuote);
+  const firstTry = await submit(replayQuote, CALLER_ID, SECOND_AGENT_ID);
+  const secondTry = await submit(replayQuote, CALLER_ID, SECOND_AGENT_ID);
   check(
     'Extra, replayed quote blocked',
     firstTry.outcome === 'settled' && secondTry.outcome === 'blocked' && secondTry.code === 'QUOTE_REPLAYED',
@@ -139,14 +152,14 @@ async function main(): Promise<void> {
   );
 
   const expiredQuote = quoteFor('vendor_data_api', 'weather_feed', -1000);
-  const expired = await submit(expiredQuote);
+  const expired = await submit(expiredQuote, CALLER_ID, SECOND_AGENT_ID);
   check(
     'Extra, expired quote blocked',
     expired.outcome === 'blocked' && expired.code === 'QUOTE_EXPIRED',
     'a quote that has expired cannot be paid.',
   );
 
-  const stranger = await submit(quoteFor('vendor_data_api', 'weather_feed'), 'mallory');
+  const stranger = await submit(quoteFor('vendor_data_api', 'weather_feed'), 'mallory', SECOND_AGENT_ID);
   check(
     'Extra, unauthorized caller blocked',
     stranger.outcome === 'blocked' && stranger.code === 'CALLER_NOT_AUTHORIZED',
@@ -154,8 +167,9 @@ async function main(): Promise<void> {
   );
 
   const blockedCount = engine.receipts.blockedAttempts().length;
+  const settledTotal = engine.spentToday(AGENT_ID) + engine.spentToday(SECOND_AGENT_ID);
   console.log(
-    `\nTotals: settled today ${formatUsd(engine.spentToday(AGENT_ID))}, blocked attempts recorded ${blockedCount}, approvals pending ${engine.approvals.list('pending').length}.`,
+    `\nTotals: settled today ${formatUsd(settledTotal)}, blocked attempts recorded ${blockedCount}, approvals pending ${engine.approvals.list('pending').length}.`,
   );
   if (failures > 0) {
     console.log(`\n${failures} check(s) FAILED.`);

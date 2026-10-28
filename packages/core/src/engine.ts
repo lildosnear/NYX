@@ -31,6 +31,13 @@ export interface SubmitOptions {
   now?: Date;
 }
 
+/** Policy amounts are whole cents, zero or more. Anything else is a mistake, not a setting. */
+function assertAmount(label: string, value: number): void {
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`${label} must be a whole number of cents, zero or more`);
+  }
+}
+
 /**
  * The policy engine. It decides every payment before any money moves, in a
  * fixed order, and the decision never comes from a model:
@@ -60,6 +67,9 @@ export class PolicyEngine {
 
   registerAgent(agent: Agent, policy: Policy): void {
     if (policy.agentId !== agent.id) throw new Error('policy agentId must match the agent id');
+    if (this.agents.has(agent.id)) throw new Error(`agent ${agent.id} already exists`);
+    assertAmount('the per payment cap', policy.perPaymentCapCents);
+    assertAmount('the daily budget', policy.dailyBudgetCents);
     this.agents.set(agent.id, { ...agent, authorizedCallers: [...agent.authorizedCallers] });
     this.policies.set(agent.id, {
       ...policy,
@@ -78,6 +88,9 @@ export class PolicyEngine {
   setAgentStatus(agentId: string, status: AgentStatus): Agent {
     const agent = this.agents.get(agentId);
     if (!agent) throw new Error(`agent ${agentId} not found`);
+    if (agent.status === 'revoked' && status !== 'revoked') {
+      throw new Error(`agent ${agentId} has been revoked, and revoking is final`);
+    }
     agent.status = status;
     return agent;
   }
@@ -96,6 +109,8 @@ export class PolicyEngine {
   ): Policy {
     const policy = this.policies.get(agentId);
     if (!policy) throw new Error(`policy for agent ${agentId} not found`);
+    if (patch.perPaymentCapCents !== undefined) assertAmount('the per payment cap', patch.perPaymentCapCents);
+    if (patch.dailyBudgetCents !== undefined) assertAmount('the daily budget', patch.dailyBudgetCents);
     if (patch.perPaymentCapCents !== undefined) policy.perPaymentCapCents = patch.perPaymentCapCents;
     if (patch.dailyBudgetCents !== undefined) policy.dailyBudgetCents = patch.dailyBudgetCents;
     if (patch.approvedVendors !== undefined) policy.approvedVendors = [...patch.approvedVendors];

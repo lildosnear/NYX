@@ -76,22 +76,36 @@ async function loadOverview() {
   $('recentPayments').innerHTML = receiptTable(payments.slice(-6).reverse());
 }
 
+function agentActions(a) {
+  if (a.status === 'active') {
+    return '<button class="secondary" data-act="pause" data-id="' + a.id + '">Pause</button> ' +
+      '<button class="danger" data-act="revoke" data-id="' + a.id + '">Revoke</button>';
+  }
+  if (a.status === 'paused') {
+    return '<button class="secondary" data-act="resume" data-id="' + a.id + '">Resume</button> ' +
+      '<button class="danger" data-act="revoke" data-id="' + a.id + '">Revoke</button>';
+  }
+  return '<span class="muted">revoke is final</span>';
+}
+
 async function loadAgents() {
   const agents = await api('/api/agents');
   if (!agents.length) { $('agentList').innerHTML = '<p class="empty">No agents yet.</p>'; return; }
   $('agentList').innerHTML = '<table><tr><th>Agent</th><th>Status</th><th>Authorized callers</th><th>Actions</th></tr>' +
     agents.map((a) =>
       '<tr><td>' + a.name + '<br><span class="muted">' + a.id + '</span></td>' +
-      '<td>' + a.status + '</td><td>' + a.authorizedCallers.join(', ') + '</td>' +
-      '<td>' +
-      '<button class="secondary" data-act="pause" data-id="' + a.id + '">Pause</button> ' +
-      '<button class="secondary" data-act="resume" data-id="' + a.id + '">Resume</button> ' +
-      '<button class="danger" data-act="revoke" data-id="' + a.id + '">Revoke</button>' +
-      '</td></tr>'
+      '<td><span class="' + (a.status === 'active' ? 'ok' : a.status === 'paused' ? 'warn' : 'bad') + '">' + a.status + '</span></td>' +
+      '<td>' + a.authorizedCallers.join(', ') + '</td>' +
+      '<td>' + agentActions(a) + '</td></tr>'
     ).join('') + '</table>';
   $('agentList').querySelectorAll('button[data-act]').forEach((btn) => {
     btn.addEventListener('click', async () => {
-      await api('/api/agents/' + btn.dataset.id + '/' + btn.dataset.act, { method: 'POST' });
+      try {
+        const updated = await api('/api/agents/' + btn.dataset.id + '/' + btn.dataset.act, { method: 'POST' });
+        $('agentActionMsg').textContent = updated.id + ' is now ' + updated.status + '.';
+      } catch (err) {
+        $('agentActionMsg').textContent = err.message;
+      }
       await refresh();
     });
   });
@@ -125,6 +139,7 @@ async function loadPolicies() {
         }),
       });
       $('msg-' + id).textContent = 'Saved as version ' + saved.version + '.';
+      await loadOverview();
     });
   });
 }
@@ -206,6 +221,10 @@ async function loadAttacks() {
         html += '<p style="margin:4px 0">The attack itself: ' + decisionLabel(result.decision.outcome) +
           ' <span class="muted">(' + result.decision.code + ': ' + result.decision.reason + ')</span></p>' +
           '<p style="margin:4px 0"><strong>' + result.landedText + '</strong></p>';
+        const gotoView = result.landedIn === 'approvals' ? 'approvals' : 'payments';
+        const gotoLabel = result.landedIn === 'approvals' ? 'See it in Approvals'
+          : result.landedIn === 'blocked' ? 'See it in Blocked attempts' : 'See it in Payments';
+        html += '<p style="margin:6px 0"><button class="secondary" data-goto="' + gotoView + '">' + gotoLabel + '</button></p>';
         $('attack-result-' + kind).innerHTML = html;
         $('attack-status-' + kind).textContent = '';
         await refresh();
@@ -252,6 +271,13 @@ document.querySelectorAll('.navbtn').forEach((btn) => {
   });
 });
 
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-goto]');
+  if (!btn) return;
+  const nav = document.querySelector('.navbtn[data-view="' + btn.dataset.goto + '"]');
+  if (nav) nav.click();
+});
+
 $('taskForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   $('taskResult').innerHTML = '<p class="muted">Running...</p>';
@@ -290,6 +316,8 @@ $('agentForm').addEventListener('submit', async (e) => {
       }),
     });
     $('agentFormMsg').textContent = 'Agent registered.';
+    $('agentId').value = '';
+    $('agentName').value = '';
     await refresh();
   } catch (err) {
     $('agentFormMsg').textContent = err.message;

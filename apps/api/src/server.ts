@@ -127,10 +127,11 @@ export function buildApp(system: NyxSystem, opts: BuildAppOptions = {}): express
   });
 
   const statusRoute = (status: AgentStatus) => (req: Request, res: Response) => {
+    if (!engine.getAgent(req.params.id)) return fail(res, 404, `agent ${req.params.id} not found`);
     try {
       return res.json(engine.setAgentStatus(req.params.id, status));
     } catch (err) {
-      return fail(res, 404, err instanceof Error ? err.message : String(err));
+      return fail(res, 400, err instanceof Error ? err.message : String(err));
     }
   };
   app.post('/api/agents/:id/pause', statusRoute('paused'));
@@ -150,6 +151,7 @@ export function buildApp(system: NyxSystem, opts: BuildAppOptions = {}): express
   app.put('/api/policies/:agentId', (req: Request, res: Response) => {
     const body: unknown = req.body;
     if (!isRecord(body)) return fail(res, 400, 'policy patch is required');
+    if (!engine.getPolicy(req.params.agentId)) return fail(res, 404, 'policy not found');
     try {
       const policy = engine.updatePolicy(req.params.agentId, {
         perPaymentCapCents:
@@ -162,7 +164,7 @@ export function buildApp(system: NyxSystem, opts: BuildAppOptions = {}): express
       });
       return res.json(policy);
     } catch (err) {
-      return fail(res, 404, err instanceof Error ? err.message : String(err));
+      return fail(res, 400, err instanceof Error ? err.message : String(err));
     }
   });
 
