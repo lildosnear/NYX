@@ -40,19 +40,31 @@ async function loadOverview() {
   ).join('');
   $('approvalBadge').textContent = o.pendingApprovals;
   $('approvalBadge').classList.toggle('hidden', o.pendingApprovals === 0);
-  const spend = o.spentTodayByAgent.map((s) =>
-    '<div>' + s.agentId + ': ' + usd(s.spentTodayCents) + ' of ' + usd(s.dailyBudgetCents) + ' daily budget used</div>'
-  ).join('');
-  $('overviewCards').innerHTML += '<div class="card"><div class="lbl">Spent today</div>' + spend + '</div>';
+  const spendRows = o.spentTodayByAgent.map((s) => {
+    const pct = s.dailyBudgetCents > 0 ? Math.min(100, Math.round((s.spentTodayCents / s.dailyBudgetCents) * 100)) : 0;
+    const cls = pct >= 100 ? 'bar-fill max' : pct >= 80 ? 'bar-fill hot' : 'bar-fill';
+    return '<div class="limit-row"><div class="limit-top"><span>' + s.agentId + '</span>' +
+      '<span class="muted">' + usd(s.spentTodayCents) + ' of ' + usd(s.dailyBudgetCents) + ' today</span></div>' +
+      '<div class="bar"><div class="' + cls + '" style="width:' + pct + '%"></div></div></div>';
+  }).join('');
+  $('spendLimits').innerHTML = spendRows || '<p class="empty">No agents yet.</p>';
+  const overBudget = o.spentTodayByAgent.some((s) => s.dailyBudgetCents > 0 && s.spentTodayCents >= s.dailyBudgetCents);
+  $('limitState').textContent = overBudget ? 'Budget reached' : 'Within budget';
+  $('limitState').className = 'pill ' + (overBudget ? 'red' : 'green');
+  const pols = await api('/api/policies').catch(() => []);
+  if (pols.length) {
+    $('capLine').textContent = 'Per payment cap ' + usd(pols[0].perPaymentCapCents) + ' for ' + pols[0].agentId + '. The daily budget is never waived, not even by an approval.';
+  }
   const ms = await api('/api/model/status').catch(() => null);
   if (ms) {
     let modelText = ms.mode === 'meta'
-      ? 'Meta model live, ' + ms.model
-      : 'Mock model, no API key set';
+      ? 'Meta model live<br>' + ms.model
+      : 'Mock model<br>No API key set';
     if (ms.second && ms.second.configured) {
-      modelText += '<br>Second model live, ' + ms.second.provider + ', ' + ms.second.model;
+      modelText += '<br>Second model live<br>' + ms.second.provider + ', ' + ms.second.model;
     }
-    $('overviewCards').innerHTML += '<div class="card"><div class="lbl">Model mode</div><div>' + modelText + '</div></div>';
+    $('sideModel').innerHTML = modelText;
+    $('modelDot').className = 'dot ' + (ms.mode === 'meta' ? 'ok-dot' : 'warn-dot');
   }
   $('vendorList').innerHTML = '<table><tr><th>Vendor</th><th>What it sells</th><th>Resources</th><th>Status</th></tr>' +
     o.vendors.map((v) =>
@@ -210,12 +222,23 @@ async function refresh() {
   await Promise.all([loadOverview(), loadAgents(), loadPolicies(), loadPayments(), loadApprovals()]);
 }
 
+const TITLES = {
+  overview: ['Overview', 'Every payment your agents tried to make, and what Nyx did with it.'],
+  agents: ['Agents', 'The agents that can spend, and the callers allowed to direct them.'],
+  policies: ['Spending policies', 'The rules the policy engine enforces on every payment.'],
+  payments: ['Payments', 'Receipts for everything that settled, failed, or was blocked.'],
+  approvals: ['Approvals', 'Payments outside the rules wait here. No money moves until you decide.'],
+  attacks: ['Attack Lab', 'Real attacks against the live system. Watch where each one lands.'],
+};
+
 document.querySelectorAll('.navbtn').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.navbtn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     document.querySelectorAll('.view').forEach((v) => v.classList.add('hidden'));
     $('view-' + btn.dataset.view).classList.remove('hidden');
+    const t = TITLES[btn.dataset.view];
+    if (t) { $('pageTitle').textContent = t[0]; $('pageSub').textContent = t[1]; }
   });
 });
 
