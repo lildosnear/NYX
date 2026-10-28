@@ -12,6 +12,7 @@ export interface PurchaseAttempt {
 
 export interface TaskResult {
   task: string;
+  agentId: string;
   attempts: PurchaseAttempt[];
   settledTotalCents: number;
   summary: string;
@@ -31,7 +32,7 @@ export class AgentRunner {
     private readonly callerId: string,
   ) {}
 
-  async runTask(task: string, now: Date = new Date()): Promise<TaskResult> {
+  async runTask(task: string, now: Date = new Date(), agentId: string = this.agentId): Promise<TaskResult> {
     const plan = await this.model.planTask(task);
     const attempts: PurchaseAttempt[] = [];
     for (const planned of plan) {
@@ -40,7 +41,7 @@ export class AgentRunner {
       const quote = merchant.getQuote(planned.resource, { now });
       const request: PaymentRequest = {
         requestId: `req_${randomUUID()}`,
-        agentId: this.agentId,
+        agentId,
         callerId: this.callerId,
         quote,
         idempotencyKey: `idem_${randomUUID()}`,
@@ -58,6 +59,7 @@ export class AgentRunner {
     const settledTotalCents = settled.reduce((sum, a) => sum + a.amountCents, 0);
     return {
       task,
+      agentId,
       attempts,
       settledTotalCents,
       summary: `${settled.length} of ${attempts.length} purchases settled. The rest were held or blocked by policy, and no money moved for them.`,

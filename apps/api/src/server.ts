@@ -209,8 +209,18 @@ export function buildApp(system: NyxSystem, opts: BuildAppOptions = {}): express
     if (!isRecord(body) || typeof body.task !== 'string' || body.task.length === 0) {
       return fail(res, 400, 'a task text is required');
     }
+    let agentId: string | undefined;
+    if (body.agentId !== undefined) {
+      if (typeof body.agentId !== 'string' || body.agentId.length === 0) {
+        return fail(res, 400, 'the agent id must be text');
+      }
+      if (!system.engine.listAgents().some((a) => a.id === body.agentId)) {
+        return fail(res, 400, 'That agent does not exist. Register it first, then run the task.');
+      }
+      agentId = body.agentId;
+    }
     try {
-      const result = await system.runner.runTask(body.task);
+      const result = await system.runner.runTask(body.task, new Date(), agentId);
       return res.json(result);
     } catch (err) {
       return fail(res, 500, err instanceof Error ? err.message : String(err));

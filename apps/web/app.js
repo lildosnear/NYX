@@ -218,8 +218,18 @@ async function loadAttacks() {
   });
 }
 
+async function loadAgentOptions() {
+  const agents = await api('/api/agents');
+  const sel = $('taskAgent');
+  const current = sel.value;
+  sel.innerHTML = agents.map((a) =>
+    '<option value="' + a.id + '">' + a.name + ' (' + a.id + ') · ' + a.status + '</option>'
+  ).join('');
+  if (agents.some((a) => a.id === current)) sel.value = current;
+}
+
 async function refresh() {
-  await Promise.all([loadOverview(), loadAgents(), loadPolicies(), loadPayments(), loadApprovals()]);
+  await Promise.all([loadOverview(), loadAgents(), loadPolicies(), loadPayments(), loadApprovals(), loadAgentOptions()]);
 }
 
 const TITLES = {
@@ -249,11 +259,11 @@ $('taskForm').addEventListener('submit', async (e) => {
     const result = await api('/api/tasks/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task: $('taskInput').value }),
+      body: JSON.stringify({ task: $('taskInput').value, agentId: $('taskAgent').value }),
     });
     $('taskResult').innerHTML = '<p>' + result.summary + '</p>' + receiptTable(result.attempts.map((a) => ({
       createdAt: new Date().toISOString(),
-      agentId: 'agent_research',
+      agentId: result.agentId || $('taskAgent').value,
       vendorId: a.vendorId,
       resource: a.resource,
       amountCents: a.amountCents,
