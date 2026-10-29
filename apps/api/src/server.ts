@@ -1,4 +1,5 @@
 import express, { type Request, type Response } from 'express';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { AgentStatus } from '@nyx_meta/core';
@@ -268,10 +269,31 @@ export function buildApp(system: NyxSystem, opts: BuildAppOptions = {}): express
   return app;
 }
 
+/**
+ * Loads the project root .env file when one is present, so a local checkout
+ * runs on the real models with no shell setup. The compiled server lives in
+ * apps/api/dist, so the project root is three folders up. A missing or
+ * unreadable file is fine: real environment variables still apply, and with
+ * no key anywhere the system simply runs on the mock model.
+ */
+function loadRootEnv(): void {
+  try {
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const envPath = path.join(here, '..', '..', '..', '.env');
+    if (existsSync(envPath) && typeof process.loadEnvFile === 'function') {
+      process.loadEnvFile(envPath);
+    }
+  } catch {
+    // Ignore the failure. Startup continues with whatever the shell provided.
+  }
+}
+
 export function start(port: number = Number(process.env.PORT ?? 8390)): void {
+  loadRootEnv();
+  const chosenPort = Number(process.env.PORT ?? port);
   const app = buildApp(createSystem());
-  app.listen(port, () => {
-    console.log(`Nyx dashboard and API listening on http://localhost:${port}`);
+  app.listen(chosenPort, () => {
+    console.log(`Nyx dashboard and API listening on http://localhost:${chosenPort}`);
   });
 }
 

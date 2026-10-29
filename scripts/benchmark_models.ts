@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   MetaModelAdapter,
   MockModelAdapter,
@@ -32,7 +35,25 @@ interface Entry {
   adapter: ModelAdapter;
 }
 
+/**
+ * Loads the project root .env file when one is present, so the benchmark
+ * sees the same keys the api would. The compiled script lives in
+ * scripts/dist, so the project root is two folders up.
+ */
+function loadRootEnv(): void {
+  try {
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const envPath = path.join(here, '..', '..', '.env');
+    if (existsSync(envPath) && typeof process.loadEnvFile === 'function') {
+      process.loadEnvFile(envPath);
+    }
+  } catch {
+    // Ignore the failure. The benchmark continues with the shell environment.
+  }
+}
+
 async function main(): Promise<void> {
+  loadRootEnv();
   const entries: Entry[] = [];
   const metaKey = process.env.MODEL_API_KEY?.trim();
   if (metaKey) {
